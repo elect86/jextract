@@ -44,6 +44,9 @@ open class JextractTask : DefaultTask() {
     @Nested
     val libraries = ArrayList<Library>()
 
+    @Internal
+    val
+
     init {
         group = "build"
     }

@@ -3,6 +3,7 @@
  */
 package jextract
 
+import de.undercouch.gradle.tasks.download.Download
 import org.gradle.api.*
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.plugins.ApplicationPlugin
@@ -17,10 +18,7 @@ import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.api.tasks.testing.Test
-import org.gradle.kotlin.dsl.create
-import org.gradle.kotlin.dsl.getByName
-import org.gradle.kotlin.dsl.named
-import org.gradle.kotlin.dsl.withType
+import org.gradle.kotlin.dsl.*
 import java.io.File
 
 /**
@@ -38,6 +36,14 @@ class JextractPlugin : Plugin<Project> {
         val jex = target.tasks.create<JextractTask>("jextract")
 //        if (target.hasProperty(PROPERTY_JAVA_HOME))
 //            jex.javaHome.set(target.property(PROPERTY_JAVA_HOME) as String)
+
+        // Download
+        target.tasks.register<Download>("downloadPanamaJdk17") {
+            src "http://example/archive.tar.gz"
+            dest "$buildDir/archive.tar.gz"
+            onlyIfModified true
+            useETag true
+        }
 
         // Configure Java plugin if it was applied
         target.plugins.withType<JavaPlugin> {
@@ -80,36 +86,36 @@ class JextractPlugin : Plugin<Project> {
 
             // Set custom java home for compiling sources in case Gradle is not compatible with the current JDK.
             // https://docs.gradle.org/current/userguide/building_java_projects.html#example_configure_java_7_build
-            if (target.hasProperty(PROPERTY_JAVA_HOME)) {
-
-                val javaExecutablesPath = File(jex.javaHome.get(), "bin")
-                fun javaExecutables(execName: String) = File(javaExecutablesPath, execName).also {
-                    assert(it.exists()) { "There is no $execName executable in $javaExecutablesPath" }
-                }
-
-                // Set java home path
-                target.tasks.withType<JavaCompile> {
-                    options.apply {
-                        isFork = true
-                        forkOptions.javaHome = target.file(jex.javaHome.get())
-                    }
-                }
-
-                // Set javadoc executable
-                target.tasks.withType<Javadoc> {
-                    executable = javaExecutables("javadoc").toString()
-                }
-
-                // Set java executable for tests
-                target.tasks.withType<Test> {
-                    executable(javaExecutables("java"))
-                }
-
-                // Set java executable for execution
-                target.tasks.withType<JavaExec> {
-                    executable(javaExecutables("java"))
-                }
-            }
+//            if (target.hasProperty(PROPERTY_JAVA_HOME)) {
+//
+//                val javaExecutablesPath = File(jex.javaHome.get(), "bin")
+//                fun javaExecutables(execName: String) = File(javaExecutablesPath, execName).also {
+//                    assert(it.exists()) { "There is no $execName executable in $javaExecutablesPath" }
+//                }
+//
+//                // Set java home path
+//                target.tasks.withType<JavaCompile> {
+//                    options.apply {
+//                        isFork = true
+//                        forkOptions.javaHome = target.file(jex.javaHome.get())
+//                    }
+//                }
+//
+//                // Set javadoc executable
+//                target.tasks.withType<Javadoc> {
+//                    executable = javaExecutables("javadoc").toString()
+//                }
+//
+//                // Set java executable for tests
+//                target.tasks.withType<Test> {
+//                    executable(javaExecutables("java"))
+//                }
+//
+//                // Set java executable for execution
+//                target.tasks.withType<JavaExec> {
+//                    executable(javaExecutables("java"))
+//                }
+//            }
         }
 
         // Configure application plugin if it was applied
