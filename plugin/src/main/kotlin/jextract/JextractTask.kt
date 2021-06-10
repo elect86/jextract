@@ -7,6 +7,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.listProperty
@@ -15,7 +16,18 @@ import org.gradle.kotlin.dsl.property
 import java.nio.file.Files
 import java.nio.file.Paths
 
-open class JextractTask : DefaultTask() {
+
+abstract class JdkExtension {
+    @get:Input abstract val name: Property<String?>?
+    @get:Input abstract val variables: MapProperty<String?, String?>?
+}
+
+abstract class TemplateData {
+    @get:Input abstract val name: Property<String?>?
+    @get:Input abstract val variables: MapProperty<String?, String?>?
+}
+
+abstract class JextractTask : DefaultTask() {
 
     /** Arguments which should be passed to clang. */
     @Optional @Input
@@ -31,7 +43,7 @@ open class JextractTask : DefaultTask() {
 
     /** The JDK home directory containing jextract. */
     @Optional @Input
-    val javaHome: Property<String> = project.objects.property<String>().convention(project.jdk17)//Jvm.current().javaHome.absolutePath)
+    val javaHome: Property<String> = project.objects.property<String>().convention(project.jdk17) //Jvm.current().javaHome.absolutePath)
 
     /** Directories which should be included during code generation. */
     @Optional @Input
@@ -44,8 +56,15 @@ open class JextractTask : DefaultTask() {
     @Nested
     val libraries = ArrayList<Library>()
 
-    @Internal
-    val
+//    @Nested
+//    abstract fun jdkData(): JdkData?
+
+    @Nested
+    fun getJDK(block: Action<JdkExtension>) {
+        val jdkData = project.extensions.create<JdkExtension>("family", FamilyExtension, instantiator, project)
+        block.execute()
+        project.family.extensions.create("children", FamilyExtension.Children, project)
+    }
 
     init {
         group = "build"

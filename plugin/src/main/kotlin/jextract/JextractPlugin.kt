@@ -37,14 +37,6 @@ class JextractPlugin : Plugin<Project> {
 //        if (target.hasProperty(PROPERTY_JAVA_HOME))
 //            jex.javaHome.set(target.property(PROPERTY_JAVA_HOME) as String)
 
-        // Download
-        target.tasks.register<Download>("downloadPanamaJdk17") {
-            src "http://example/archive.tar.gz"
-            dest "$buildDir/archive.tar.gz"
-            onlyIfModified true
-            useETag true
-        }
-
         // Configure Java plugin if it was applied
         target.plugins.withType<JavaPlugin> {
 
