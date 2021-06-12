@@ -17,7 +17,7 @@ plugins {
 
     `kotlin-dsl`
 
-//    id("de.undercouch.download") version "4.1.1"
+    id("de.undercouch.download") version "4.1.1"
 }
 
 repositories {

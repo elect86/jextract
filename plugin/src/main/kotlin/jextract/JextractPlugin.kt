@@ -3,23 +3,25 @@
  */
 package jextract
 
-import de.undercouch.gradle.tasks.download.Download
+import de.undercouch.gradle.tasks.download.DownloadAction
+import de.undercouch.gradle.tasks.download.DownloadExtension
+import de.undercouch.gradle.tasks.download.VerifyAction
+import de.undercouch.gradle.tasks.download.VerifyExtension
 import org.gradle.api.*
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.plugins.ApplicationPlugin
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.plugins.JavaApplication
 import org.gradle.api.plugins.JavaPlugin
-import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
-import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.*
-import java.io.File
+import java.net.URL
+import java.util.*
 
 /**
  * A simple 'hello world' plugin.
@@ -32,10 +34,58 @@ class JextractPlugin : Plugin<Project> {
 
     override fun apply(target: Project) {
 
+        target.plugins.apply("de.undercouch.download")
+
         // Create and register jextract task
         val jex = target.tasks.create<JextractTask>("jextract")
-//        if (target.hasProperty(PROPERTY_JAVA_HOME))
-//            jex.javaHome.set(target.property(PROPERTY_JAVA_HOME) as String)
+
+        target.tasks.register("setup panama jdk 17") {
+
+            group = "build"
+
+            doLast {
+                fun getLinux(text: String, offset: Int = 0): String {
+                    val index = text.indexOf("\"https://download.java.net/java/early_access/panama/", startIndex = offset) + 1 // drop first "
+                    val url = text.substring(index, endIndex = text.indexOf("\">", startIndex = index))
+                    val keys = listOf("openjdk", "17", "panama", "linux-x64", "bin")
+                    return when {
+                        keys.all { it in url } -> url
+                        else -> getLinux(text, index)
+                    }
+                }
+
+                lateinit var url: String
+                target.extensions.getByName<DownloadExtension>("download").configure(
+                    delegateClosureOf<DownloadAction> {
+                        url = getLinux(URL("https://jdk.java.net/panama/").readText())
+                        src(url)
+                        downloadTaskDir(target.buildDir.resolve("tmp"))
+                        dest(target.buildDir)
+                        overwrite(false)
+                        onlyIfModified(true)
+                        useETag(true)
+                    })
+
+                val file = target.buildDir.resolve(url.substringAfterLast('/'))
+                target.extensions.getByName<VerifyExtension>("verifyChecksum").configure(
+                    delegateClosureOf<VerifyAction> {
+                        src(file)
+                        algorithm("SHA-256")
+                        checksum(URL("$url.sha256").readText())
+                    })
+
+                val extractedDir = target.buildDir.resolve("jdk-17")
+                if (!extractedDir.exists()) {
+                    target.copy {
+                        from(target.tarTree(target.resources.gzip(file)))
+                        into(target.buildDir)
+                    }
+
+                    val lines = target.file("gradle.properties").readLines()
+//                    lines.j
+                }
+            }
+        }
 
         // Configure Java plugin if it was applied
         target.plugins.withType<JavaPlugin> {
@@ -75,39 +125,6 @@ class JextractPlugin : Plugin<Project> {
 
             // The java compiler should only be invoked after jextract generated its source files
             target.compileJava { dependsOn(jex) }
-
-            // Set custom java home for compiling sources in case Gradle is not compatible with the current JDK.
-            // https://docs.gradle.org/current/userguide/building_java_projects.html#example_configure_java_7_build
-//            if (target.hasProperty(PROPERTY_JAVA_HOME)) {
-//
-//                val javaExecutablesPath = File(jex.javaHome.get(), "bin")
-//                fun javaExecutables(execName: String) = File(javaExecutablesPath, execName).also {
-//                    assert(it.exists()) { "There is no $execName executable in $javaExecutablesPath" }
-//                }
-//
-//                // Set java home path
-//                target.tasks.withType<JavaCompile> {
-//                    options.apply {
-//                        isFork = true
-//                        forkOptions.javaHome = target.file(jex.javaHome.get())
-//                    }
-//                }
-//
-//                // Set javadoc executable
-//                target.tasks.withType<Javadoc> {
-//                    executable = javaExecutables("javadoc").toString()
-//                }
-//
-//                // Set java executable for tests
-//                target.tasks.withType<Test> {
-//                    executable(javaExecutables("java"))
-//                }
-//
-//                // Set java executable for execution
-//                target.tasks.withType<JavaExec> {
-//                    executable(javaExecutables("java"))
-//                }
-//            }
         }
 
         // Configure application plugin if it was applied

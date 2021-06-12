@@ -1,5 +1,6 @@
 package jextract
 
+import de.undercouch.gradle.tasks.download.*
 import org.codehaus.groovy.runtime.ProcessGroovyMethods
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
@@ -7,25 +8,18 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
-import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
-import org.gradle.kotlin.dsl.listProperty
-import org.gradle.kotlin.dsl.newInstance
-import org.gradle.kotlin.dsl.property
+import org.gradle.api.tasks.Optional
+import org.gradle.internal.jvm.Jvm
+import org.gradle.kotlin.dsl.*
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 
-
-abstract class JdkExtension {
-    @get:Input abstract val name: Property<String?>?
-    @get:Input abstract val variables: MapProperty<String?, String?>?
-}
-
-abstract class TemplateData {
-    @get:Input abstract val name: Property<String?>?
-    @get:Input abstract val variables: MapProperty<String?, String?>?
-}
 
 abstract class JextractTask : DefaultTask() {
 
@@ -43,7 +37,7 @@ abstract class JextractTask : DefaultTask() {
 
     /** The JDK home directory containing jextract. */
     @Optional @Input
-    val javaHome: Property<String> = project.objects.property<String>().convention(project.jdk17) //Jvm.current().javaHome.absolutePath)
+    val javaHome: Property<String> = project.objects.property<String>().convention(Jvm.current().javaHome.absolutePath)
 
     /** Directories which should be included during code generation. */
     @Optional @Input
@@ -56,29 +50,27 @@ abstract class JextractTask : DefaultTask() {
     @Nested
     val libraries = ArrayList<Library>()
 
-//    @Nested
-//    abstract fun jdkData(): JdkData?
-
-    @Nested
-    fun getJDK(block: Action<JdkExtension>) {
-        val jdkData = project.extensions.create<JdkExtension>("family", FamilyExtension, instantiator, project)
-        block.execute()
-        project.family.extensions.create("children", FamilyExtension.Children, project)
-    }
+    fun jdk(action: Action<JdkExtension>) = action.execute(project.extensions.create("jdk"))
 
     init {
         group = "build"
     }
 
+    @get:Internal
+    val download: DownloadExtension
+        get() = project.extensions.getByName("download") as DownloadExtension
+
     @TaskAction
     fun action() {
-        println("action")
+
+        println("jextract action")
         // Check if jextract is present
         val javaPath = javaHome.get()
         val jextractPath = Paths.get(javaPath, "bin/jextract")
         if (!Files.exists(jextractPath))
             throw GradleException("jextract binary could not be found (JVM_HOME=$javaPath)")
 
+        //        val jdkEx = project.extensions.getByName<JdkExtension>("jdk")
 
         for (lib in libraries) {
 
