@@ -67,8 +67,8 @@ abstract class JextractTask : DefaultTask() {
         // Check if jextract is present
         val javaPath = javaHome.get()
         val jextractPath = Paths.get(javaPath, "bin/jextract")
-        if (!Files.exists(jextractPath))
-            throw GradleException("jextract binary could not be found (JVM_HOME=$javaPath)")
+//        if (!Files.exists(jextractPath))
+//            throw GradleException("jextract binary could not be found (JVM_HOME=$javaPath)")
 
         //        val jdkEx = project.extensions.getByName<JdkExtension>("jdk")
 

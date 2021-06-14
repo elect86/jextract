@@ -22,6 +22,7 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.*
 import java.net.URL
 import java.util.*
+import kotlin.collections.ArrayList
 
 /**
  * A simple 'hello world' plugin.
@@ -81,8 +82,21 @@ class JextractPlugin : Plugin<Project> {
                         into(target.buildDir)
                     }
 
-                    val lines = target.file("gradle.properties").readLines()
-//                    lines.j
+                    // we need to tell Gradle where to find our experimental panama jdk
+                    val prop = target.file("gradle.properties")
+                    val lines = prop.readLines() as ArrayList<String>
+                    val pathIndex = lines.indexOfFirst { it.startsWith("org.gradle.java.installations.paths") }
+                    val jdkPath = "${project.buildDir}/jdk-17"
+                    var writeBack = true
+                    if (pathIndex == -1)
+                        lines += "# added by jextract plugin\norg.gradle.java.installations.paths=$jdkPath"
+                    else if (jdkPath in lines[pathIndex])
+                        writeBack = false // jdkPath already included
+                    else
+                        lines[pathIndex] = "# modified by jextract plugin\n${lines[pathIndex]},$jdkPath"
+
+                    if (writeBack)
+                        prop.writeText(lines.joinToString(separator = "\n"))
                 }
             }
         }
