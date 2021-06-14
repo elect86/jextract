@@ -20,6 +20,7 @@ import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.*
+import java.io.File
 import java.net.URL
 import java.util.*
 import kotlin.collections.ArrayList
@@ -39,6 +40,9 @@ class JextractPlugin : Plugin<Project> {
 
         // Create and register jextract task
         val jex = target.tasks.create<JextractTask>("jextract")
+
+        // Add the jdk extension object
+//        val extension = target.extensions.create<JdkExtension>("jdk", target.buildDir)
 
         target.tasks.register("setup panama jdk 17") {
 
@@ -128,6 +132,7 @@ class JextractPlugin : Plugin<Project> {
 
             // We need to add the foreign module, so the compiler sees its classes
             target.withType<JavaCompile> {
+//                options.compilerArgs.add("--enable-native-access=ALL-UNNAMED") TODO?
                 options.compilerArgs.add("--add-modules")
                 options.compilerArgs.add("jdk.incubator.foreign")
             }
@@ -150,6 +155,7 @@ class JextractPlugin : Plugin<Project> {
     }
 }
 
+// dsl helpers
 fun Project.sourceSets(configure: Action<SourceSetContainer>) = (this as ExtensionAware).extensions.configure("sourceSets", configure)
 val SourceSetContainer.main: NamedDomainObjectProvider<SourceSet> get() = named<SourceSet>("main")
 operator fun <T> NamedDomainObjectProvider<T>.invoke(action: T.() -> Unit) = configure(action)

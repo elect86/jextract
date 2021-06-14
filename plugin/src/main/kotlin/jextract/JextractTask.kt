@@ -11,13 +11,8 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.Optional
-import org.gradle.internal.jvm.Jvm
 import org.gradle.kotlin.dsl.*
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.net.URL
-import java.nio.file.Files
-import java.nio.file.Paths
+import java.io.File
 import java.util.*
 
 
@@ -37,7 +32,7 @@ abstract class JextractTask : DefaultTask() {
 
     /** The JDK home directory containing jextract. */
     @Optional @Input
-    val javaHome: Property<String> = project.objects.property<String>().convention(Jvm.current().javaHome.absolutePath)
+    val jdk17: Property<File> = project.objects.property<File>().convention(project.buildDir.resolve("jdk-17")) //Jvm.current().javaHome.absolutePath)
 
     /** Directories which should be included during code generation. */
     @Optional @Input
@@ -50,7 +45,10 @@ abstract class JextractTask : DefaultTask() {
     @Nested
     val libraries = ArrayList<Library>()
 
-    fun jdk(action: Action<JdkExtension>) = action.execute(project.extensions.create("jdk"))
+    @get:Nested
+    val jdk: JdkExtension = project.extensions.create("nested", project.buildDir)
+
+    fun jdk(action: Action<JdkExtension>): Unit = action.execute(jdk)
 
     init {
         group = "build"
@@ -65,10 +63,10 @@ abstract class JextractTask : DefaultTask() {
 
         println("jextract action")
         // Check if jextract is present
-        val javaPath = javaHome.get()
-        val jextractPath = Paths.get(javaPath, "bin/jextract")
-//        if (!Files.exists(jextractPath))
-//            throw GradleException("jextract binary could not be found (JVM_HOME=$javaPath)")
+        println(System.getProperty("java.version"))
+        val jextractPath = jdk17.get().resolve("bin/jextract")
+//        if (!jextractPath.exists())
+//            throw GradleException("jextract binary could not be found (jdk17=$jdk17)")
 
         //        val jdkEx = project.extensions.getByName<JdkExtension>("jdk")
 
@@ -155,7 +153,7 @@ abstract class JextractTask : DefaultTask() {
             arguments += "-d"
             arguments += outputDir.get().toString()
 
-            execute("${jextractPath.toAbsolutePath()} ${arguments.joinToString(" ")} ${lib.header.get()}")
+            execute("${jextractPath.toPath().toAbsolutePath()} ${arguments.joinToString(" ")} ${lib.header.get()}")
         }
     }
 
